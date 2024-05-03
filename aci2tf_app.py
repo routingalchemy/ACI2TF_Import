@@ -2,6 +2,7 @@ import requests
 import json
 import re
 import sys
+import os
 
 import resources
 
@@ -17,9 +18,10 @@ class aci2tf_import:
         self.verify = verify
         self.headers = {"Content": "application/json"}
         self.token = {}
-        self.bakcup = False  #  save a local copy from the work data
+        self.bakcup = False #  save a local copy from the work data
         self.exclude_defaults = True  # exclude default objects from import (beta)
         self.apic_resource = ""
+        self.file_name = ""
 
     def __apic_token_post(self):
         """Logging in and getting a token for further interaction with the APIC"""
@@ -58,10 +60,10 @@ class aci2tf_import:
         except requests.exceptions.RequestException as error:
             raise SystemExit(error)
 
-    def __write_file(self, filename, content):
+    def __write_file(self, content):
         """File writer function"""
 
-        with open(filename, "t+a") as fp:
+        with open(self.file_name, "t+a") as fp:
             if type(content) == dict:
                 fp.write(json.dumps(content, indent=4))
             else:
@@ -69,13 +71,22 @@ class aci2tf_import:
 
     def __tfimport_func(self, tf_rsc, aci_dn):
         """Terraform import statement creator"""
-
+           
         import_statement = (
-            """import {{\n\tto = {tf_rsc}\n\tid = "{aci_dn}"\n}}\n\n""".format(
+            """import {{\n  to = {tf_rsc}\n  id = "{aci_dn}"\n}}\n\n""".format(
                 tf_rsc=tf_rsc, aci_dn=aci_dn
             )
         )
-        self.__write_file("import.tf", import_statement)
+        self.__write_file(import_statement)
+    
+    def import_block_stats():
+        """Stats output on the number of import blocks"""
+
+        for flist in os.listdir():
+            if flist.startswith("import_"):
+                with open( flist, "r") as fp:
+                    words = re.findall("import ",fp.read())
+                    print("{} object imports were created in {}. Check result".format(len(words),flist))
 
     def list_tenants(self):  # WIP
         """Geting the list of available tenants from the APIC"""
@@ -91,37 +102,38 @@ class aci2tf_import:
 
         if function == "fabric":
             query_obj, n = re.subn(
-                "['\[\] ]", "", str(resources.fabric_objects)
+                r"['\[\] ]", "", str(resources.fabric_objects)
             )  # format list of infra object for reuse in the query
             self.apic_resource = "/api/node/mo/uni.json?query-target=subtree&target-subtree-class={}".format(
                 query_obj
             )
-            filename = "infrastructure_data.json"
+            self.file_name = "infrastructure_data.json"
         elif function == "tenant":
             self.apic_resource = (
                 "/api/node/mo/uni/tn-{}.json?query-target=subtree".format(tenant)
             )
-            filename = "tn-{}_data.json".format(tenant)
+            self.file_name = "tn-{}_data.json".format(tenant)
         else:
             print("Not a valid ACI policy element! EXIT")
             sys.exit(1)
         aci_data = self.__api_get()
         if self.bakcup == True:
-            self.__write_file(filename, aci_data)
+            self.__write_file(aci_data)
         aci_obj_num = 0
         for imdata in aci_data["imdata"]:
             for object_key, object_value in imdata.items():
                 if object_key in eval("resources.{}_objects".format(function)):
+                    self.file_name = "import_{}.tf".format(function)
+                    aci_obj_num += 1
                     if (
                         object_value["attributes"].get("name", None) == "default"
                         and self.exclude_defaults is True
                     ):
-                        break
-                    aci_obj_num += 1
-                    if (
+                        self.file_name = "import_default.tf.bak" 
+                        object_name = object_value["attributes"]["name"]
+                    elif (
                         object_value["attributes"].get("name", None) == None
-                        or object_value["attributes"].get("name", None) == ""
-                    ):
+                        or object_value["attributes"].get("name", None) == ""):
                         object_name = object_key
 
                     else:
@@ -131,7 +143,7 @@ class aci2tf_import:
                     )  # get the corresponding terrform resource
                     object_dn = object_value["attributes"]["dn"]
                     clean_object_name, _n = re.subn(
-                        "\W", "_", object_name
+                        r"\W", "_", object_name
                     )  # replace anything from the object name that is not alphanumeric
                     self.__tfimport_func(
                         "{}.aci-{}-OBJ{}-{}".format(
@@ -142,11 +154,7 @@ class aci2tf_import:
                         ),
                         object_dn,
                     )
-        print(
-            "{} object imports were created. Check import.tf for result".format(
-                aci_obj_num
-            )
-        )
+
 
 
 # Examples:
@@ -155,3 +163,4 @@ class aci2tf_import:
 # import_data.object_importer() # create import for the common tenant (calls the importer function with default values)
 # import_data.object_importer("tenant", "CORP-DEV")  # create import for the CORP-DEV tenant
 # import_data.object_importer("fabric")  # create import for the fabric objects
+# aci2tf_import.import_block_stats() # basic stats on the number of import blocks
