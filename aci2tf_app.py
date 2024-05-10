@@ -18,7 +18,7 @@ class aci2tf_import:
         self.verify = verify
         self.headers = {"Content": "application/json"}
         self.token = {}
-        self.bakcup = False #  save a local copy from the work data
+        self.bakcup = False  #  save a local copy from the work data
         self.exclude_defaults = True  # exclude default objects from import (beta)
         self.apic_resource = ""
         self.file_name = ""
@@ -71,22 +71,26 @@ class aci2tf_import:
 
     def __tfimport_func(self, tf_rsc, aci_dn):
         """Terraform import statement creator"""
-           
+
         import_statement = (
             """import {{\n  to = {tf_rsc}\n  id = "{aci_dn}"\n}}\n\n""".format(
                 tf_rsc=tf_rsc, aci_dn=aci_dn
             )
         )
         self.__write_file(import_statement)
-    
+
     def import_block_stats():
         """Stats output on the number of import blocks"""
 
         for flist in os.listdir():
             if flist.startswith("import_"):
-                with open( flist, "r") as fp:
-                    words = re.findall("import ",fp.read())
-                    print("{} object imports were created in {}. Check result".format(len(words),flist))
+                with open(flist, "r") as fp:
+                    words = re.findall("import ", fp.read())
+                    print(
+                        "{} object imports were created in {}. Check result".format(
+                            len(words), flist
+                        )
+                    )
 
     def list_tenants(self):  # WIP
         """Geting the list of available tenants from the APIC"""
@@ -129,15 +133,13 @@ class aci2tf_import:
                         object_value["attributes"].get("name", None) == "default"
                         and self.exclude_defaults is True
                     ):
-                        self.file_name = "import_default.tf.bak" 
-                        object_name = object_value["attributes"]["name"]
-                    elif (
-                        object_value["attributes"].get("name", None) == None
-                        or object_value["attributes"].get("name", None) == ""):
-                        object_name = object_key
-
-                    else:
-                        object_name = object_value["attributes"]["name"]
+                        self.file_name = "import_default.tf.bak"
+                    object_name = (
+                        eval('resources.{}["rnprefix"]'.format(object_key))
+                        + object_value["attributes"]["dn"].split(
+                            eval('resources.{}["rnprefix"]'.format(object_key))
+                        )[1]
+                    )
                     terraforn_resource = eval(
                         'resources.{}["terraform_resource"]'.format(object_key)
                     )  # get the corresponding terrform resource
@@ -146,7 +148,7 @@ class aci2tf_import:
                         r"\W", "_", object_name
                     )  # replace anything from the object name that is not alphanumeric
                     self.__tfimport_func(
-                        "{}.aci-{}-OBJ{}-{}".format(
+                        "{}.{}-OBJ{}-{}".format(
                             terraforn_resource,
                             function,
                             str(aci_obj_num).zfill(5),
@@ -156,11 +158,10 @@ class aci2tf_import:
                     )
 
 
-
 # Examples:
 # import_data = aci2tf_import("sandboxapicdc.cisco.com", "admin", "!v3G@!4@Y")  # create an instance with the login credentials
 # import_data.list_tenants() # print the list of available tenants
 # import_data.object_importer() # create import for the common tenant (calls the importer function with default values)
 # import_data.object_importer("tenant", "CORP-DEV")  # create import for the CORP-DEV tenant
 # import_data.object_importer("fabric")  # create import for the fabric objects
-# aci2tf_import.import_block_stats() # basic stats on the number of import blocks
+# aci2tf_import.import_block_stats()  # basic stats on the number of import blocks
