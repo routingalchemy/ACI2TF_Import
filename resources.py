@@ -508,12 +508,6 @@ fabricNodeBlk = {
     "description": "  Manages ACI Node Block",
     "rnprefix": "nodeblk",
 }
-fabricNodeBlk = {
-    "aci_object": "fabricNodeBlk",
-    "terraform_resource": "aci_maintenance_group_node",
-    "description": "  Manages ACI Maintenance Group Node",
-    "rnprefix": "nodeblk",
-}
 spanSrcGrp = {
     "aci_object": "spanSrcGrp",
     "terraform_resource": "aci_span_source_group",

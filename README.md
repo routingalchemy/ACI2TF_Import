@@ -139,13 +139,13 @@ import {
 }
 
 #Fabric:
-#An l3out domain profile
+#A L3out domain profile
 import {
   to = aci_l3_domain_profile.fabric-OBJ00161-l3dom_DOM_DR_L3Out
   id = "uni/l3dom-DOM_DR_L3Out"
 }
 
-#A vlan range with generic name label
+#A vlan range 
 import {
   to = aci_ranges.fabric-OBJ00148-from__vlan_10__to__vlan_19_
   id = "uni/infra/vlanns-[on-prem]-static/from-[vlan-10]-to-[vlan-19]"
