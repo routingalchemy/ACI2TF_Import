@@ -113,42 +113,42 @@ aci2tf_import.import_block_stats()
 ```
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-### Output 
-Import block naming standard is ```<TERRAFORM_RESOURCE_NAME>.aci-<tenant or fabric>-OBJ<INCLEMENTING_NUMBER>-<ACI_OBJECT_NAME or ACI_OBJECT_TYPE>``` where
+### Output (updated)
+Import block naming standard is ```<TERRAFORM_RESOURCE_NAME>.<tenant or fabric>-OBJ<INCLEMENTING_NUMBER>-<ACI_OBJECT_ID with RN prefix>``` where
 - ```<TERRAFORM_RESOURCE_NAME>``` is the terraform resource name where we want to import the object into
-- ```aci-<tenant or fabric>-OBJ<INCLEMENTING_NUMBER>-``` is an generic object identifier can be for example
-    - ```aci-tenant-OBJ00001``` a tenant object
-    - ```aci-fabric-OBJ00005``` a fabric object
-- The ```<ACI_OBJECT_NAME or ACI_OBJECT_TYPE>``` is either the objects "real" name or the ACI resource type(as a generic identifier) for example:
-    - ```infraRsDomP``` as a fabric generic object
-    - ```Test-PP-TEN``` as a tenant named object
+- ```<tenant or fabric>-OBJ<INCLEMENTING_NUMBER>-``` is an generic object identifier can be for example
+    - ```tenant-OBJ00001``` a tenant object
+    - ```fabric-OBJ00005``` a fabric object
+- The ```<ACI_OBJECT_ID with RN prefix>``` is the objects RN(relative name) identifier":
+    - ```lldpIfP_system_lldp_disabled``` as a fabric lldp object
+    - ```epg_Web_EPG``` as a tenant EPG object
 
 Import Block output examples
 ```
 # Tenant:
-# A Subnet (has no name), with a generic name label
+# A BD Subnet 
 import {
-	to = aci_subnet.aci-tenant-OBJ00022-fvSubnet
-	id = "uni/tn-Test-ABC/BD-Test-subent/subnet-[10.128.1.0/24]"
+  to = aci_subnet.tenant-OBJ00028-subnet__10_1_102_1_24_
+  id = "uni/tn-B/BD-L3_TEST/subnet-[10.1.102.1/24]"
 }
 
-# An EPG with correct name label
+# An EPG 
 import {
-	to = aci_application_epg.aci-tenant-OBJ00016-Cloud_ZXY_Internal
-	id = "uni/tn-Test-ABC/ap-Slamana-app/epg-Cloud_ZXY_Internal"
+  to = aci_application_epg.tenant-OBJ00027-epg_Web_EPG
+  id = "uni/tn-Cloud/ap-Fantastic-APP/epg-Web-EPG"
 }
 
 #Fabric:
-#A l3out domain profile with correct name label
+#A L3out domain profile
 import {
-	to = aci_l3_domain_profile.aci-fabric-OBJ00039-DMZ_L3Out_dom
-	id = "uni/l3dom-DMZ-L3Out-dom"
+  to = aci_l3_domain_profile.fabric-OBJ00161-l3dom_DOM_DR_L3Out
+  id = "uni/l3dom-DOM_DR_L3Out"
 }
 
-#A vlan range with generic name label
+#A vlan range 
 import {
-	to = aci_ranges.aci-fabric-OBJ00127-encap
-	id = "uni/infra/vlanns-[on-prem]-static/from-[vlan-200]-to-[vlan-399]"
+  to = aci_ranges.fabric-OBJ00148-from__vlan_10__to__vlan_19_
+  id = "uni/infra/vlanns-[on-prem]-static/from-[vlan-10]-to-[vlan-19]"
 }
 ```
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -157,7 +157,8 @@ import {
 
 - Multi-Site and NDO managed objects are not supported at the moment. 
 - Although the terraform ACI provider supports it, the **cloud** objects are currently not implemented for import yet. 
-- The importer tries to create the import blocks based on the ACI object name, but that is not always possible or it was complex to code it. Terraform resource names are sometime not meaningful but unique. It needs a manual amendment to the required format.
+- Terraform resource names are sometime not meaningful but unique. It needs a manual amendment to the desired format.
+- Some objects are imported in Tenant and Fabric section too. (WIP)
 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -171,6 +172,7 @@ import {
  - [ ] Updater for the the resources.py file
  - [X] Filter option for ```default``` objects. 
  - [ ] More granular import options
+ - [X] Impove terraform resource naming
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
