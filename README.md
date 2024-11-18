@@ -164,7 +164,8 @@ import {
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Roadmap
- 
+
+ - [ ] Only inport objects from APIC that are not NDO/MSO managed (NDO/MSO managed object should be imported from NDO/MSO)
  - [ ] NDO object import
  - [ ] Offline import (from an APIC output file)
  - [ ] Cloud object import
