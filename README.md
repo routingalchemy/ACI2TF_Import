@@ -113,51 +113,11 @@ aci2tf_import.import_block_stats()
 ```
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-### Output (updated)
-Import block naming standard is ```<TERRAFORM_RESOURCE_NAME>.<tenant or fabric>-OBJ<INCLEMENTING_NUMBER>-<ACI_OBJECT_ID with RN prefix>``` where
-- ```<TERRAFORM_RESOURCE_NAME>``` is the terraform resource name where we want to import the object into
-- ```<tenant or fabric>-OBJ<INCLEMENTING_NUMBER>-``` is an generic object identifier can be for example
-    - ```tenant-OBJ00001``` a tenant object
-    - ```fabric-OBJ00005``` a fabric object
-- The ```<ACI_OBJECT_ID with RN prefix>``` is the objects RN(relative name) identifier":
-    - ```lldpIfP_system_lldp_disabled``` as a fabric lldp object
-    - ```epg_Web_EPG``` as a tenant EPG object
-
-Import Block output examples
-```
-# Tenant:
-# A BD Subnet 
-import {
-  to = aci_subnet.tenant-OBJ00028-subnet__10_1_102_1_24_
-  id = "uni/tn-B/BD-L3_TEST/subnet-[10.1.102.1/24]"
-}
-
-# An EPG 
-import {
-  to = aci_application_epg.tenant-OBJ00027-epg_Web_EPG
-  id = "uni/tn-Cloud/ap-Fantastic-APP/epg-Web-EPG"
-}
-
-#Fabric:
-#A L3out domain profile
-import {
-  to = aci_l3_domain_profile.fabric-OBJ00161-l3dom_DOM_DR_L3Out
-  id = "uni/l3dom-DOM_DR_L3Out"
-}
-
-#A vlan range 
-import {
-  to = aci_ranges.fabric-OBJ00148-from__vlan_10__to__vlan_19_
-  id = "uni/infra/vlanns-[on-prem]-static/from-[vlan-10]-to-[vlan-19]"
-}
-```
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 ## Caveats
 
 - Multi-Site and NDO managed objects are not supported at the moment. 
 - Although the terraform ACI provider supports it, the **cloud** objects are currently not implemented for import yet. 
-- Terraform resource names are sometime not meaningful but unique. It needs a manual amendment to the desired format.
+- Terraform resource names are sometime very long It needs a manual amendment to the desired format.
 - Some objects are imported in Tenant and Fabric section too. (WIP)
 
 
@@ -165,15 +125,15 @@ import {
 
 ## Roadmap
 
- - [ ] Only inport objects from APIC that are not NDO/MSO managed (NDO/MSO managed object should be imported from NDO/MSO)
+ - [X] Only inport objects from APIC that are not NDO/MSO managed (NDO/MSO managed object should be imported from NDO/MSO)
  - [ ] NDO object import
  - [ ] Offline import (from an APIC output file)
  - [ ] Cloud object import
- - [ ] Resource block generation (maybe)
+ - [ ] Resource block generation (WIP)
  - [ ] Updater for the the resources.py file
  - [X] Filter option for ```default``` objects. 
  - [ ] More granular import options
- - [X] Impove terraform resource naming
+ - [X] Impove terraform resource naming (based on DNs)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
