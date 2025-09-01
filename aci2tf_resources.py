@@ -1,10 +1,3 @@
-#APP Settings
-backup_work_data = False #  save a local copy from the work data
-exclude_default_objects = True # exclude default objects from import (beta)
-http_headers = {"Content-Type": "application/json", "Accept":"application/json"}
-https_cert_verify = False
-
-
 vnsL1L2RedirectDest = {
     "aci_object": "vnsL1L2RedirectDest",
     "terraform_resource": "aci_pbr_l1_l2_destination",
