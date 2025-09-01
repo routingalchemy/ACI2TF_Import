@@ -49,20 +49,41 @@ pip install -r requirements.txt
 
 The 2 python files in the directory are:
  - `aci2tf_app.py` - main app
- - `resources.py` - additional data which holds information about the supported ACI objects and the terraform resource names in various formats that the app uses
+ - `aci2tf_resources.py` - additional data which holds information about the supported ACI objects and the terraform resource names in various formats that the app uses
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Usage
-1. Define an instance and provide the login credentials `import_data = aci2tf_import("HOSTNAME/IP","USERNAME","PASSWORD")`
-2. To import ACI objects. On the instance, call the `object_importer` method  like `import_data.object_importer()`. By default it imports **Tenant** objects from the the *Common* tenant. 
-    - For importing a different tenant objects the `import_data.object_importer("tenant","NAME-OF-TENANT")` syntax should be used.
-    - For importing the fabric objects `import_data.object_importer("fabric")` 
+- Since v0.5 the code runs from CLI.
 
-3. (Optionally) if you want a backup from the APIC data that is used during the script run, in the ```__init__``` method set the ```self.bakcup``` to ```True``` (a lot of data but can be handy later for writing or checking the resource blocks later)
-4. (Optionally) you can import the ```default``` object from ACI  with setting the ```self.exclude_defaults``` to ```False```. Not mandatory, but if you are using them in your config  than it is quite important. (default objects are placed into a separate ```import_default.tf.bak``` by default :) )
-4. Run the script
-5. Check import blocks for required amendments(name labels)
+```
+usage: aci2tf_app.py [-h] [-u username] [-p password] [-a https://apic_ip_or_fqdn] [-i [tenant/fabric]] [-t [common]]
+
+Script to aid ACI objects to import into Terraform
+
+options:
+  -h, --help            show this help message and exit
+  -u "username", --user "username"
+                        Username
+  -p "password", --passwd "password"
+                        Password
+  -a "apic_ip_or_fqdn", --apic "apic_ip_or_fqdn"
+                        APIC URL
+  -i [tenant/fabric], --import [tenant]
+                        Import type: tenant/fabric
+  -t [common], --tenant [common]
+                        Tenant to import. If not defined than common will be imported
+  -b "True/False", --backup "True/False"
+                        Backup the working data tht is pulled form ACI
+  -d [True], --default_exclude [True]
+                        Exclude "default" named object form the import statements (set to True by default)
+```
+1. Provide Username, Password and APIC IP as required arguments ```python3 aci2tf_app.py -u admin -p password -a 192.168.192.168 -i tenant``` OR ```fabric```
+2. With ```-i fabric``` there is no more option, but with ```-i tenant``` a tenant name should be specified ```-t Tenant-o-NAME``` If tenant name is not specified than than the **common** tenanat will be imported. 
+3. (Optionally) if you want a backup from the APIC data that is used during the script run, set argument ```-b True``` (a lot of data but can be handy later for writing or checking the resource blocks later)
+4. (Optionally) by default the ```default``` object from ACI  are exluded not can be imported with arguments ```-d False```. Not mandatory, but if you are using them in your config  than it is quite important. (default objects are placed into a separate ```import_default.tf.bak``` by default :) )
+5. Run the script
+6. Check import blocks for required amendments(name labels)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -89,28 +110,20 @@ In this example:
 
 5. If happy with the plan than apply the code and welcome to the world of IaC
 
+# !Always backup your APIC config before trying to import everything into Terraform!
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Examples
-Create an instance with the login credentials (for example the cisco ACI sandbox) `import_data = aci2tf_import("sandboxapicdc.cisco.com", "admin", "!v3G@!4@Y")`
 
-Print the list of available tenants `import_data.list_tenants()` (optional if needed/for testing the access)
+Import Fabric objects: ```python3 aci2tf_app.py -u admin -p password -a 192.168.192.168 -i fabric```
 
-Call the importer function with default values `import_data.object_importer()` Create import for the common tenant 
+Import common tenant objects: ```python3 aci2tf_app.py -u admin -p password -a 192.168.192.168 -i tenant```
 
-Create import for the CORP-DEV tenant `import_data.object_importer("tenant","CORP-DEV") `
+Import User "CORP" tenant objects:```python3 aci2tf_app.py -u admin -p password -a 192.168.192.168 -i tenant -t CORP```
 
-Create import for the fabric objects `import_data.object_importer("fabric")`
+Import Fabric objects with work data bakcup: ```python3 aci2tf_app.py -u admin -p password -a 192.168.192.168 -i fabric -b True```
 
-*The following 3 lines would create import file for CORP-DEV tenant and the fabric configuration.*
-
-Optionally you can run ```aci2tf_import.import_block_stats()``` which gathers basic stats on the imported elements
-```
-import_data = aci2tf_import("sandboxapicdc.cisco.com", "admin", "!v3G@!4@Y")
-import_data.object_importer("tenant","CORP-DEV")
-import_data.object_importer("fabric")
-aci2tf_import.import_block_stats()
-```
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Caveats
@@ -130,10 +143,11 @@ aci2tf_import.import_block_stats()
  - [ ] Offline import (from an APIC output file)
  - [ ] Cloud object import
  - [ ] Resource block generation (WIP)
- - [ ] Updater for the the resources.py file
+ - [ ] Updater for the the aci2tf_rresources.py file
  - [X] Filter option for ```default``` objects. 
  - [ ] More granular import options
  - [X] Impove terraform resource naming (based on DNs)
+ - [X] CLI based run
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

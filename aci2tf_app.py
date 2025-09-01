@@ -1,7 +1,9 @@
+#!/usr/bin/env python
 import requests
 import json
 import re
 import sys
+import argparse
 
 import aci2tf_resources
 
@@ -27,7 +29,13 @@ class aci2tf_import:
         }
         try:
             response = requests.post(
-                host, headers=aci2tf_resources.http_headers, data=json.dumps(data), verify=aci2tf_resources.https_cert_verify
+                host,
+                headers={
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+                data=json.dumps(data),
+                verify=False,
             )
             response.raise_for_status()
             if response.status_code != 204:
@@ -47,7 +55,13 @@ class aci2tf_import:
         host = "https://{}{}".format(self.hostname, self.apic_resource)
         try:
             response = requests.get(
-                host, cookies=self.token, headers=aci2tf_resources.http_headers, verify=aci2tf_resources.https_cert_verify
+                host,
+                cookies=self.token,
+                headers={
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+                verify=False,
             )
             response.raise_for_status()  # raises exception when not a 2xx response
             if response.status_code != 204:
@@ -72,7 +86,7 @@ class aci2tf_import:
                 tf_rsc=tf_rsc, aci_dn=aci_dn
             )
         )
-        self.__write_file("import.tf", import_statement)
+        self.__write_file(self.file_name, import_statement)
 
     def list_tenants(self):  # WIP
         """Geting the list of available tenants from the APIC"""
@@ -83,59 +97,118 @@ class aci2tf_import:
             print(data["fvTenant"]["attributes"]["name"])
             # Need more details to print
 
-    def object_importer(self, function="tenant", tenant="common"):
+    def object_importer(self, function="tenant", tenant=None):
         """Retrieving the ACI cobjects"""
 
-        if function == "fabric":
-            query_obj, n = re.subn(
-                "['\[\] ]", "", str(aci2tf_resources.fabric_objects)
-            )  # format list of infra object for reuse in the query
-            self.apic_resource = "/api/node/mo/uni.json?query-target=subtree&target-subtree-class={}".format(
-                query_obj
-            )
-            filename = "infrastructure_data.json"
-        elif function == "tenant":
-            self.apic_resource = (
-                "/api/node/mo/uni/tn-{}.json?query-target=subtree".format(tenant)
-            )
-            filename = "tn-{}_data.json".format(tenant)
-        else:
-            print("Not a valid ACI policy element! EXIT")
-            sys.exit(1)
+        match function:
+            case "fabric":
+                query_obj, n = re.subn(
+                    r"['\[\] ]", "", str(aci2tf_resources.fabric_objects)
+                )  # format list of infra object for reuse in the query
+                self.apic_resource = "/api/node/mo/uni.json?query-target=subtree&target-subtree-class={}".format(
+                    query_obj
+                )
+                filename = "infrastructure_data.json"
+            case "tenant":
+                self.apic_resource = (
+                    "/api/node/mo/uni/tn-{}.json?query-target=subtree".format(tenant)
+                )
+                filename = "tn-{}_data.json".format(tenant)
+            case _:
+                print("Not a valid ACI policy element! EXIT")
+                sys.exit(1)
         aci_data = self.__api_get()
-        if aci2tf_resources.backup_work_data == True:
+        if backup_work_data == True:
             self.__write_file(filename, aci_data)
         aci_obj_num = 0
         for imdata in aci_data["imdata"]:
             object_key = list(imdata.keys())[0]
-            if imdata[object_key]["attributes"].get("annotation", None) == "orchestrator:msc":
-                break # exclude MSO/NDO managed objects from importing
+            if (
+                imdata[object_key]["attributes"].get("annotation", None)
+                == "orchestrator:msc"
+            ):
+                break  # exclude MSO/NDO managed objects from importing
             if object_key in eval("aci2tf_resources.{}_objects".format(function)):
                 tfobject_name, _n = re.subn(
-                    r"\W", "_", imdata[object_key]["attributes"]["dn"].lstrip("uni/").lower()
-                )  # replace anything from the object name that is not alphanumeric  
+                    r"\W",
+                    "_",
+                    imdata[object_key]["attributes"]["dn"].lstrip("uni/").lower(),
+                )  # replace anything from the object name that is not alphanumeric
                 aci_obj_num += 1
                 terraforn_resource = eval(
-                    'aci2tf_resources.{}["terraform_resource"]'.format(object_key))
-                if (
-                        imdata[object_key]["attributes"].get("name", None) == "default"
-                        and aci2tf_resources.exclude_default_objects is True
-                        ):
-                        self.file_name = "import_default.tf.bak"
+                    'aci2tf_resources.{}["terraform_resource"]'.format(object_key)
+                )
                 self.file_name = "import_{}.tf".format(function)
-                self.__tfimport_func("{}.{}".format(terraforn_resource,
-                    tfobject_name),
+                if (
+                    "default" in imdata[object_key]["attributes"]["dn"]
+                    and exclude_default_objects is True
+                ):
+                    self.file_name = "import_default.tf.bak"
+                self.file_name = "import_{}.tf".format(function)
+                self.__tfimport_func(
+                    "{}.{}".format(terraforn_resource, tfobject_name),
                     imdata[object_key]["attributes"]["dn"],
-                    )
-        print(
-            "{} object imports were created. Check import.tf for result".format(
-                aci_obj_num
-            )
-        )
+                )
+        print(f"{aci_obj_num} object imports were created.")
 
 
-# import_data = aci2tf_import("sandboxapicdc.cisco.com", "admin", "!v3G@!4@Y") # create an instance with the login credentials
-# import_data.list_tenants() # print the list of available tenants
-# import_data.object_importer() # create import for the common tenant (calls the importer function with default values)
-# import_data.object_importer("tenant","CORP-DEV") # create import for the CORP-DEV tenant
-# import_data.object_importer("fabric") # create import for the fabric objects
+if __name__ == "__main__":
+    requests.packages.urllib3.disable_warnings()
+    parser = argparse.ArgumentParser(
+        description="Script to aid ACI objects to import into Terraform"
+    )
+    parser.add_argument(
+        "-u", "--user", help="Username", required=True, metavar="username"
+    )
+    parser.add_argument(
+        "-p", "--passwd", help="Password", required=True, metavar="password"
+    )
+    parser.add_argument(
+        "-a", "--apic", help="APIC IP/URL", required=True, metavar="apic_ip_or_fqdn"
+    )
+    parser.add_argument(
+        "-i",
+        "--import_type",
+        help="Import type: tenant/fabric",
+        required=True,
+        nargs="?",
+        metavar="tenant",
+    )
+    parser.add_argument(
+        "-t",
+        "--tenant",
+        help="Tenant to import (relevant only in tenant import)",
+        nargs="?",
+        metavar="common",
+    )
+    parser.add_argument(
+        "-b",
+        "--backup",
+        help="Backup working data from APIC",
+        nargs="?",
+        metavar="False",
+    )
+    parser.add_argument(
+        "-d",
+        "--default_exclude",
+        help="Exclude default objects from import",
+        nargs="?",
+        metavar="True",
+    )
+    args = parser.parse_args()
+
+    import_data = aci2tf_import(args.apic, args.user, args.passwd)
+
+    if args.backup == "true":
+        backup_work_data = True
+    else:
+        backup_work_data = False
+
+    if args.default_exclude == "false":
+        exclude_default_objects = False
+    else:
+        exclude_default_objects = True
+
+    if args.tenant is None:
+        args.tenant = "common"
+    import_data.object_importer(args.import_type, args.tenant)
